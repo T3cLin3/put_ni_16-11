@@ -24,9 +24,29 @@ class Manager:
                 return False
         return True
     
-    def get_apartment_costs(self, apartment_key, year, month):
+    def get_apartment_costs(
+        self,
+        apartment_key: str,
+        year: int | None = None,
+        month: int | None = None,
+    ) -> float | None:
         if apartment_key not in self.apartments:
             return None
+
+        if month is not None and not (1 <= month <= 12):
+            raise ValueError(f"Invalid month: {month}. Month must be between 1 and 12.")
+
+        total_costs = 0.0
+        for bill in self.bills:
+            if bill.apartment != apartment_key:
+                continue
+            if year is not None and bill.settlement_year != year:
+                continue
+            if month is not None and bill.settlement_month != month:
+                continue
+            total_costs += bill.amount_pln
+
+        return float(total_costs)
         
         total_costs = sum(
             bill.amount_pln
