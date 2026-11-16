@@ -1,5 +1,5 @@
 from src.manager import Manager
-from src.models import Apartment, Bill, Parameters, ApartmentSettlement
+from src.models import Apartment, Bill, Parameters, ApartmentSettlement, Tenant, TenantSettlement
 import pytest
 
 def test_get_apartment_costs():
@@ -163,3 +163,124 @@ def test_create_apartment_settlement():
     assert settlement_no_bills.total_due_pln == 0.0
 
     assert manager.create_apartment_settlement("NIEISTNIEJACE", 2024, 3) is None
+
+def test_create_tenant_settlements():
+    manager = Manager(Parameters())
+
+    manager.apartments = {
+        "A1": Apartment(
+            key="A1",
+            name="Apartament 1",
+            location="Centrum",
+            area_m2=60.0,
+            rooms={
+                "r1": {"name": "Pokój 1", "area_m2": 20.0},
+                "r2": {"name": "Pokój 2", "area_m2": 20.0},
+            },
+        ),
+        "A2": Apartment(
+            key="A2",
+            name="Apartament 2",
+            location="Wilda",
+            area_m2=40.0,
+            rooms={"r1": {"name": "Salon", "area_m2": 40.0}},
+        ),
+        "A3": Apartment(
+            key="A3",
+            name="Apartament Pusty",
+            location="Jeżyce",
+            area_m2=35.0,
+            rooms={"r1": {"name": "Kawalerka", "area_m2": 35.0}},
+        ),
+    }
+
+    manager.tenants = {
+        "t1": Tenant(
+            name="Jan Kowalski",
+            apartment="A1",
+            room="r1",
+            rent_pln=1500.0,
+            deposit_pln=1500.0,
+            date_agreement_from="2024-01-01",
+            date_agreement_to="2024-12-31",
+        ),
+        "t2": Tenant(
+            name="Anna Nowak",
+            apartment="A1",
+            room="r2",
+            rent_pln=1600.0,
+            deposit_pln=1600.0,
+            date_agreement_from="2024-01-01",
+            date_agreement_to="2024-06-30",
+        ),
+        "t3": Tenant(
+            name="Piotr Wiśniewski",
+            apartment="A2",
+            room="r1",
+            rent_pln=2000.0,
+            deposit_pln=2000.0,
+            date_agreement_from="2024-01-01",
+            date_agreement_to="2024-12-31",
+        ),
+    }
+
+    manager.bills = [
+        Bill(
+            amount_pln=300.0,
+            date_due="2024-03-15",
+            apartment="A1",
+            settlement_year=2024,
+            settlement_month=3,
+            type="Prąd",
+        ),
+        Bill(
+            amount_pln=250.0,
+            date_due="2024-03-15",
+            apartment="A2",
+            settlement_year=2024,
+            settlement_month=3,
+            type="Gaz",
+        ),
+        Bill(
+            amount_pln=100.0,
+            date_due="2024-03-15",
+            apartment="A3",
+            settlement_year=2024,
+            settlement_month=3,
+            type="Czynsz",
+        ),
+    ]
+
+
+    apt_settlement_a1 = manager.create_apartment_settlement("A1", 2024, 3)
+    tenant_settlements_a1 = manager.create_tenant_settlements(apt_settlement_a1)
+
+    assert len(tenant_settlements_a1) == 2
+    assert all(isinstance(ts, TenantSettlement) for ts in tenant_settlements_a1)
+    assert tenant_settlements_a1[0].tenant == "Jan Kowalski"
+    assert tenant_settlements_a1[0].apartment_settlement == "A1"
+    assert tenant_settlements_a1[0].year == 2024
+    assert tenant_settlements_a1[0].month == 3
+    assert tenant_settlements_a1[0].bills_pln == 150.0
+    assert tenant_settlements_a1[0].total_due_pln == 150.0
+    assert tenant_settlements_a1[1].tenant == "Anna Nowak"
+    assert tenant_settlements_a1[1].bills_pln == 150.0
+    assert tenant_settlements_a1[1].total_due_pln == 150.0
+
+
+    apt_settlement_a2 = manager.create_apartment_settlement("A2", 2024, 3)
+    tenant_settlements_a2 = manager.create_tenant_settlements(apt_settlement_a2)
+
+    assert len(tenant_settlements_a2) == 1
+    assert tenant_settlements_a2[0].tenant == "Piotr Wiśniewski"
+    assert tenant_settlements_a2[0].bills_pln == 250.0
+    assert tenant_settlements_a2[0].total_due_pln == 250.0
+
+
+    apt_settlement_a3 = manager.create_apartment_settlement("A3", 2024, 3)
+    tenant_settlements_a3 = manager.create_tenant_settlements(apt_settlement_a3)
+
+    assert tenant_settlements_a3 == []
+    assert len(tenant_settlements_a3) == 0
+
+
